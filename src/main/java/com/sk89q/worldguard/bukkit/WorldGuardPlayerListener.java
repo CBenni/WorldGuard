@@ -40,6 +40,8 @@ import com.sk89q.worldguard.protection.flags.DefaultFlag;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.util.command.CommandFilter;
+
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -73,6 +75,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
+import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginManager;
 
@@ -215,6 +218,8 @@ public class WorldGuardPlayerListener implements Listener {
 
         String greeting = set.getFlag(DefaultFlag.GREET_MESSAGE);//, localPlayer);
         String farewell = set.getFlag(DefaultFlag.FAREWELL_MESSAGE);//, localPlayer);
+        String greetcmd = set.getFlag(DefaultFlag.GREET_COMMAND);//, localPlayer);
+        String farewellcmd = set.getFlag(DefaultFlag.FAREWELL_COMMAND);//, localPlayer);
         Boolean notifyEnter = set.getFlag(DefaultFlag.NOTIFY_ENTER);//, localPlayer);
         Boolean notifyLeave = set.getFlag(DefaultFlag.NOTIFY_LEAVE);//, localPlayer);
         GameMode gameMode = set.getFlag(DefaultFlag.GAME_MODE);
@@ -225,12 +230,39 @@ public class WorldGuardPlayerListener implements Listener {
                     player, BukkitUtil.replaceColorMacros(state.lastFarewell));
             player.sendMessage(replacedFarewell.replaceAll("\\\\n", "\n").split("\\n"));
         }
+        
+        if (state.lastFarewellCommand != null) {
+            if(farewellcmd == null || !state.lastFarewellCommand.equals(farewellcmd)) {
+                plugin.getLogger().info(greetcmd);
+                ServerCommandEvent evt = new ServerCommandEvent(plugin.getServer().getConsoleSender() , farewellcmd);
+                plugin.getServer().getPluginManager().callEvent(evt);
+                String cc = farewellcmd;
+                if(cc.startsWith("/")) {
+                    cc = cc.substring(1);
+                }
+                cc = cc.replaceAll("@p", player.getName());
+                Bukkit.dispatchCommand(plugin.getServer().getConsoleSender(), cc);
+            }
+        }
 
         if (greeting != null && (state.lastGreeting == null
                 || !state.lastGreeting.equals(greeting))) {
             String replacedGreeting = plugin.replaceMacros(
                     player, BukkitUtil.replaceColorMacros(greeting));
             player.sendMessage(replacedGreeting.replaceAll("\\\\n", "\n").split("\\n"));
+        }
+        
+        if (greetcmd != null && (state.lastGreetCommand == null
+                || !state.lastGreetCommand.equals(greetcmd))) {
+            plugin.getLogger().info(greetcmd);
+            ServerCommandEvent evt = new ServerCommandEvent(plugin.getServer().getConsoleSender() , greetcmd);
+            plugin.getServer().getPluginManager().callEvent(evt);
+            String cc = greetcmd;
+            if(cc.startsWith("/")) {
+                cc = cc.substring(1);
+            }
+            cc = cc.replaceAll("@p", player.getName());
+            Bukkit.dispatchCommand(plugin.getServer().getConsoleSender(), cc);
         }
 
         if ((notifyLeave == null || !notifyLeave)
@@ -275,6 +307,9 @@ public class WorldGuardPlayerListener implements Listener {
 
         state.lastGreeting = greeting;
         state.lastFarewell = farewell;
+        state.lastGreetCommand = greetcmd;
+        state.lastFarewell = farewell;
+        state.lastFarewellCommand = farewellcmd;
         state.notifiedForEnter = notifyEnter;
         state.notifiedForLeave = notifyLeave;
         state.lastExitAllowed = exitAllowed;
